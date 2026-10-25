@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /$
+Allow: /pricing
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <!-- Oct 22 dark mode: set the theme before the first paint (no flash). Same rules as src/lib/theme.ts. -->
+    <script>
+      (function () {
+        try {
+          var p = localStorage.getItem('rc.theme');
+          var app = /^\/(m|p|admin|platform|sign-in|login|invite|setup-2fa)(\/|$)/.test(location.pathname);
+          var dark = app && (p === 'dark' || (p !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
+          var r = document.documentElement;
+          if (app) r.classList.add('app-theme');
+          r.setAttribute('data-theme', dark ? 'dark' : 'light');
+          r.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (e) {}
+      })();
+    </script>
+    <style>html.app-theme[data-theme='dark']{background:#111318;color-scheme:dark}</style>
+    <!-- Defaults match the public landing page (/); pages update these at runtime (src/marketing/meta.ts). -->
+    <title>Runner POS | Restaurant POS &amp; Back Office, Supported Locally</title>
+    <meta name="description" content="Runner POS runs tables, bar tabs, handhelds, and kitchen screens, and keeps working offline. Runner Cloud handles menus, staff, and reports." />
+    <meta property="og:title" content="Runner — The POS built for the rush" />
+    <meta property="og:description" content="Restaurant POS and back office, set up and supported by a local expert." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/og/runner-og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0b1f33" />
+    <link rel="icon" href="data:," />
+    <script type="module" crossorigin src="/assets/index-DP4U5QvH.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-9QC2anmG.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
