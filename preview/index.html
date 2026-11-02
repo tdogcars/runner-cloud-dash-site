@@ -10277,6 +10277,190 @@ body.mode-handheld .prs,.hh .prs{width:100%;border-radius:16px}
   return { create, referenceOf, resultOf, stripeReaderRole };
 });
 </script>
+<script id="spin-local-map">
+/*
+ * SPIn local mode (plans/spin-local.md): the station drives its own card reader on the store network.
+ * Runner Cloud queues every terminal call as a job for the terminal's station (GET /v1/payments/local/jobs); the station
+ * runs it here, over the native bridge (SpinLocalBridge.java: HTTPS pinned to the reader's certificate), and posts the
+ * mapped result (POST /v1/payments/local/jobs/:id/result). Card data never leaves the reader: only masked fields go back.
+ *
+ * XML request:  https://<ip>:<port>/SPIn/cgi.html?TerminalTransaction=<request>...</request>   [S] SPIn specification
+ * XML response: <response>...<ResultCode/><RespMSG/><Message/><AuthCode/><PNRef/><ExtData>k=v,k=v</ExtData>...</response>
+ * [M] = mapping assumed from the spec's samples; confirm on the Bon Appetit terminal (TPN/SN tag names especially).
+ *
+ * SpinLocal.buildRequest(job, creds) -> XML string     SpinLocal.parseResponse(job, xml) -> cloud result object
+ * SpinLocal.identityOf(xml) -> { tpn, serial }         SpinLocal.identityMatches(want, got) -> bool
+ * SpinLocal.createRunner({ cloud, native, log }) -> { start, stop, runOnce }   (the station's job loop)
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.SpinLocal = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  const esc = (s) => String(s == null ? '' : s).replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
+  const dollars = (c) => (Math.max(0, Math.round(Number(c) || 0)) / 100).toFixed(2);
+  const cents = (s) => { const n = Number(String(s == null ? '' : s).replace(/[^0-9.]/g, '')); return String(s == null ? '' : s).trim() !== '' && isFinite(n) ? Math.round(n * 100) : null; };
+  /** The reader's RefId: the cloud reference (UUID hex + rN). */
+  const TRANS = { sale: 'Sale', auth: 'Auth', capture: 'Capture', tip_adjust: 'TipAdjust', void: 'Void', return: 'Return', status: 'Status', abort: 'Abort', settle: 'Settle' };
+
+  function buildRequest(job, creds) {
+    const r = job.request || {};
+    const t = [];
+    const tag = (k, v) => { if (v != null && v !== '') t.push('<' + k + '>' + esc(v) + '</' + k + '>'); };
+    if (job.kind === 'check') {
+      // [M] a Status on a reference that never existed: any well-formed answer proves the reader is there and who it is
+      tag('PaymentType', 'Credit'); tag('TransType', 'Status'); tag('RefId', 'check' + Date.now().toString(36));
+    } else if (job.kind === 'settle') {
+      tag('TransType', 'Settle'); tag('Param', 'Close'); tag('RefId', r.reference);
+    } else {
+      const tt = TRANS[job.kind];
+      if (!tt) throw new Error('unknown job kind ' + job.kind);
+      tag('PaymentType', 'Credit'); tag('TransType', tt); tag('RefId', r.reference);
+      if (job.kind === 'sale' || job.kind === 'auth' || job.kind === 'return' || job.kind === 'void' || job.kind === 'capture' || job.kind === 'tip_adjust') tag('Amount', dollars(r.amountCents));
+      if (job.kind === 'sale' || job.kind === 'capture' || job.kind === 'tip_adjust') tag('Tip', dollars(r.tipCents || 0));
+      if (job.kind === 'capture') tag('AuthCode', r.authCode);
+      if (r.invoice) tag('InvNum', String(r.invoice).slice(0, 20));
+      if (job.kind === 'sale' || job.kind === 'return' || job.kind === 'auth') tag('PrintReceipt', 'No');
+    }
+    tag('RegisterId', creds.register_id); tag('AuthKey', creds.auth_key); tag('TPN', creds.tpn);
+    return '<request>' + t.join('') + '</request>';
+  }
+
+  function field(xml, name) {
+    const m = new RegExp('<' + name + '>([\\s\\S]*?)</' + name + '>', 'i').exec(String(xml || ''));
+    return m ? m[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&').trim() : null;
+  }
+  function extData(xml) {
+    const out = {};
+    String(field(xml, 'ExtData') || '').split(',').forEach((kv) => { const i = kv.indexOf('='); if (i > 0) out[kv.slice(0, i).trim().toLowerCase()] = kv.slice(i + 1).trim(); });
+    return out;
+  }
+  /** Cashier-safe text: any run of 7+ digits masked, like the cloud's safeText. */
+  const safe = (s) => (s ? String(s).replace(/\d(?:[ -]?\d){6,}/g, (x) => '••••' + x.replace(/\D/g, '').slice(-4)).slice(0, 200) : undefined);
+  const entryOf = (v) => {
+    const s = String(v || '').toLowerCase();
+    if (!s) return undefined;
+    if (/manual|keyed/.test(s)) return 'keyed';
+    if (/contactless|tap|nfc|ctls/.test(s)) return 'contactless';
+    if (/fallback/.test(s)) return 'fallback_swipe';
+    if (/swipe|mag/.test(s)) return 'swipe';
+    if (/chip|emv|insert/.test(s)) return 'chip';
+    return undefined;
+  };
+
+  /** [M] the reader's identity in any response. Tag names vary by firmware, so several are accepted. */
+  function identityOf(xml) {
+    const x = extData(xml);
+    const tpn = field(xml, 'TPN') || field(xml, 'Tpn') || x.tpn || null;
+    const serial = field(xml, 'SN') || field(xml, 'SerialNumber') || field(xml, 'Serial') || x.sn || x.serialnumber || null;
+    return { tpn: tpn ? tpn.toUpperCase() : null, serial: serial ? serial.toUpperCase() : null };
+  }
+  /** Never pair with a reader that is not this one: every identity field the reader reports must match, and at least one must. */
+  function identityMatches(want, got) {
+    const norm = (s) => (s ? String(s).trim().toUpperCase() : null);
+    let checked = 0;
+    for (const k of ['tpn', 'serial']) {
+      const a = norm(want && want[k]), b = norm(got && got[k]);
+      if (a && b) { if (a !== b) return false; checked++; }
+    }
+    return checked > 0;
+  }
+
+  /**
+   * [S] ResultCode 0 approved, 1 declined/error, 2 unknown/communication. [M] RespMSG/Message carry the text.
+   * Returns the fields Runner Cloud's cleanLocalResult keeps; nothing else (never the receipt or a card number).
+   */
+  function parseResponse(job, xml) {
+    if (!xml) return { state: 'unknown', message: 'The card reader gave no answer.' };
+    const rc = field(xml, 'ResultCode');
+    const msg = field(xml, 'RespMSG') || field(xml, 'Message');
+    const x = extData(xml);
+    if (job.kind === 'check') return { ok: true, status: 'online', message: 'The card reader answered on the store network.' };
+    if (job.kind === 'settle') return rc === '0' ? { ok: true, count: Number(x.count || x.txncount) || 0, totalCents: cents(x.amount || x.total) || 0, message: safe(msg) } : { ok: false, statusCode: rc || 'NET', message: safe(msg) || 'The batch did not close.' };
+    if (job.kind === 'status' && /not\s*found|no\s*record|no\s*match/i.test(String(msg || ''))) return { not_found: true };
+    const declined = /declin/i.test(String(msg || ''));
+    const cancelled = /cancel|abort/i.test(String(msg || ''));
+    let state = rc === '0' ? 'approved' : rc === '2' ? 'unknown' : declined ? 'declined' : cancelled ? 'cancelled' : rc === '1' ? 'error' : 'unknown';
+    const r = job.request || {};
+    const amt = cents(x.amount);
+    if (state === 'approved' && amt != null && r.amountCents && (job.kind === 'sale' || job.kind === 'auth') && amt + (cents(x.tip) || 0) < r.amountCents + (r.tipCents || 0) && amt < r.amountCents) state = 'partial';
+    const out = { state };
+    if (state === 'approved') out.approvedCents = r.amountCents != null ? r.amountCents : amt != null ? amt : undefined;
+    if (state === 'partial') out.approvedCents = amt;
+    const tip = cents(x.tip); if (tip != null) out.tipCents = tip;
+    const last4 = x.acntlast4 || x.last4; if (/^\d{4}$/.test(last4 || '')) out.last4 = last4;
+    const brand = x.cardtype || x.cardbrand; if (brand) out.brand = brand.slice(0, 32);
+    const auth = field(xml, 'AuthCode'); if (auth) out.authCode = auth.slice(0, 32);
+    const ref = field(xml, 'PNRef') || x.rrn || field(xml, 'TransNum'); if (ref) out.providerRef = ref.slice(0, 64);
+    if (x.batchnum) out.batchNumber = x.batchnum.slice(0, 16);
+    const e = entryOf(x.entrytype || x.entry); if (e) out.entry = e;
+    if (rc) out.statusCode = rc;
+    const m = safe(msg); if (m) out.message = m;
+    if (job.kind === 'void' && state === 'approved') out.voided = true;
+    return out;
+  }
+
+  /**
+   * The station's job loop. native: { send(creds, xml) -> Promise<{ ok, xml?, host?, cert_sha256?, rediscovered?, error? }> }
+   * (SpinLocalBridge: pinned HTTPS, rediscovery on the /24 when the saved address fails). cloud: the link's cloud().
+   */
+  function createRunner(deps) {
+    let running = false, creds = null, credsAt = 0;
+    const log = deps.log || function () {};
+    async function credentials(force) {
+      if (!force && creds && Date.now() - credsAt < 10 * 60 * 1000) return creds;
+      const r = await deps.cloud('GET', '/v1/payments/local/terminal');
+      creds = r && r.status === 200 && r.body && r.body.terminal ? r.body.terminal : null;
+      credsAt = Date.now();
+      if (creds && deps.native.store) deps.native.store(creds);   // the Keystore copy, for when the cloud is unreachable
+      return creds;
+    }
+    async function runJob(job) {
+      const c = await credentials(false);
+      if (!c || c.id !== job.terminal_id) return { state: 'error', message: 'This station is not set up for that card reader.' };
+      let res;
+      try { res = await deps.native.send(c, buildRequest(job, c), job.kind); } catch (e) { res = { ok: false, error: String(e && e.message || e) }; }
+      if (!res || !res.ok) {
+        if (job.kind === 'check') return { ok: false, status: res && res.error === 'identity_mismatch' ? 'error' : 'offline', message: res && res.error === 'identity_mismatch' ? 'A different card reader answered at that address. The station did not pair with it.' : 'The card reader did not answer on the store network.' };
+        // a call that may have reached the reader is unknown (the cloud then asks Status on the same reference); one that never left is an error
+        const sent = res && res.sent;
+        return { state: sent ? 'unknown' : 'error', message: sent ? 'The card reader did not answer. Checking the payment.' : 'The card reader is not reachable on the store network. Nothing was charged.' };
+      }
+      const got = identityOf(res.xml);
+      if ((got.tpn || got.serial) && !identityMatches({ tpn: c.tpn, serial: c.serial_number }, got)) return job.kind === 'check' ? { ok: false, status: 'error', message: 'A different card reader answered at that address. The station did not pair with it.' } : { state: 'error', message: 'A different card reader answered. Nothing was sent to it.' };
+      if (res.host && res.cert_sha256) {
+        await deps.cloud('POST', '/v1/payments/local/seen', { body: { terminal_id: c.id, host: res.host, cert_sha256: res.cert_sha256, serial_number: got.serial || undefined, rediscovered: !!res.rediscovered } });
+        if (res.host !== c.host) c.host = res.host;
+      }
+      return parseResponse(job, res.xml);
+    }
+    async function runOnce(waitMs) {
+      const r = await deps.cloud('GET', '/v1/payments/local/jobs?wait_ms=' + (waitMs == null ? 25000 : waitMs));
+      if (!r || r.status !== 200) return -1;
+      const jobs = (r.body && r.body.jobs) || [];
+      for (const j of jobs) {
+        const result = await runJob(j);
+        await deps.cloud('POST', '/v1/payments/local/jobs/' + j.id + '/result', { body: { result } });
+      }
+      return jobs.length;
+    }
+    async function loop() {
+      while (running) {
+        let n;
+        try { n = await runOnce(); } catch (e) { log('spin-local loop', e); n = -1; }
+        if (n < 0 && running) await new Promise((ok) => setTimeout(ok, 3000));
+      }
+    }
+    return {
+      start() { if (!running) { running = true; credentials(true).catch(() => null); loop(); } },
+      stop() { running = false; },
+      runOnce, runJob, credentials,
+    };
+  }
+
+  return { buildRequest, parseResponse, identityOf, identityMatches, createRunner, _field: field, _extData: extData };
+});
+</script>
 <!-- runner-link:end -->
 <script>
 "use strict";
@@ -21408,6 +21592,20 @@ window.RP_ORDERNO = (() => {
     if (payLayer.gateway) ["charge", "forward", "lookup", "store"].forEach(k => { const f = payLayer.gateway[k]; if (typeof f === "function") payLayer.gateway[k] = (...a) => (training() ? Promise.resolve({ result: "error", msg: "Training mode: the payment terminal is off. Nothing was charged." }) : f.apply(payLayer.gateway, a)); });
   }
   window.RP_PAY = payLayer;
+  /* SPIn local mode: this station runs its card reader's jobs on the store network (web/link/spin-local-map.js +
+     SpinLocalBridge.java). Started only on a station whose terminal is set to "Direct on the store network". */
+  const spinLocal = (() => {
+    const N = window.RunnerNative;
+    if (!window.SpinLocal || !N || typeof N.spinLocalSend !== "function") return null;
+    const waiting = {}; let seq = 0;
+    window.RP_SPINLOCAL_DONE = (id, json) => { const f = waiting[id]; delete waiting[id]; if (f) { let v = null; try { v = JSON.parse(json); } catch (e) { v = { ok: false, error: "bad_reply" }; } f(v); } };
+    const native = {
+      send: (creds, xml, kind) => new Promise(ok => { const id = "s" + (++seq); waiting[id] = ok; N.spinLocalSend(id, JSON.stringify({ host: creds.host, port: creds.port, tpn: creds.tpn, serial_number: creds.serial_number, cert_sha256: creds.cert_sha256 || null, quick: kind === "check" || kind === "status" || kind === "abort" }), xml); }),
+      store: creds => { try { if (typeof N.spinLocalStore === "function") N.spinLocalStore(JSON.stringify(creds)); } catch (e) { /* the Keystore copy is optional */ } },
+    };
+    return window.SpinLocal.createRunner({ cloud: payCloud, native, log: (m, e) => { try { console.warn(m, e && e.message); } catch (x) { /* ignore */ } } });
+  })();
+  const spinLocalTick = () => { if (!spinLocal || !payLayer) return; const c = payLayer.config(); const want = PAGE.view !== "handheld" && !!(c && c.terminal && c.terminal.transport === "local"); if (want) spinLocal.start(); else spinLocal.stop(); };
   const simGw = RC ? RC.simGateway(() => (cardDev || pageDevice()).S.sim, { delay: 0 }) : null;   // cardTap's own delay is the reader time
   const gw = () => (payLayer && payLayer.terminalMode() ? payLayer.gateway : simGw);
   /* vc92: a linked device never charges on the simulator just because the store's payment settings haven't loaded yet
@@ -21429,7 +21627,7 @@ window.RP_ORDERNO = (() => {
     abort: (payId, n) => (payLayer && payLayer.terminalMode() ? payLayer.abort(payId, n) : Promise.resolve({ result: "none" })),
   };
   if (payLayer && !(typeof TEST !== "undefined" && TEST)) {
-    const cfgTick = () => { if (payHook("RP_PAY_CLOUD") || (LINK && LINK.status().paired)) payLayer.refresh().then(() => { try { pageDevice().render(); } catch (e) { /* vc92: render lives on the device */ } stripeDev.ensure(PAGE.view, PAGE.view === "handheld" && !!(pageDevice().useM2 && pageDevice().useM2())).catch(() => {}); }).catch(() => {}); };
+    const cfgTick = () => { if (payHook("RP_PAY_CLOUD") || (LINK && LINK.status().paired)) payLayer.refresh().then(() => { spinLocalTick(); try { pageDevice().render(); } catch (e) { /* vc92: render lives on the device */ } stripeDev.ensure(PAGE.view, PAGE.view === "handheld" && !!(pageDevice().useM2 && pageDevice().useM2())).catch(() => {}); }).catch(() => {}); };
     setTimeout(cfgTick, 3000); setInterval(cfgTick, 120000);
     LINK && LINK.on(e => { if (e && (e.type === "paired" || e.type === "role" || e.type === "cloudMenu")) setTimeout(cfgTick, 500); });   // vc92: load the provider right after sign-in
     setInterval(() => { if (payLayer.terminalMode()) pageDevice().payFeed().catch(e => cardLog("warn", "payment actions feed failed", e)); }, 15000);
