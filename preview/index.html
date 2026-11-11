@@ -10466,7 +10466,7 @@ body.mode-handheld .prs,.hh .prs{width:100%;border-radius:16px}
 "use strict";
 /* Runner POS prototype: a station and a PAX A6630 handheld. Each device has its own UI state; orders, tickets, time,
    drawers, 86 counts and roles live in one store reached through a simulated in-store hub (entity-level sync). */
-const BRAND = { productName: "Runner POS", supportName: "FLO", supportHours: "7am to midnight", supportPhone: "(803) 888-4031" };   // the single brand token (brand.json in the app); set supportPhone to show the number
+const BRAND = { productName: "Runner POS", supportName: "Runner Tech", supportHours: "7am to midnight", supportPhone: "(803) 888-4031" };   // the single brand token (brand.json in the app); set supportPhone to show the number
 // b8: the label comes from the installed APK (versionName/versionCode), so it can never go stale; the constants are the web/demo fallback.
 const APP_NATIVE = (() => { try { const n = window.RunnerNative && typeof window.RunnerNative.updateInfo === "function" ? JSON.parse(window.RunnerNative.updateInfo()) : null; return n && n.versionCode ? n : null; } catch (e) { return null; } })();
 const APP_VERSION = (APP_NATIVE && APP_NATIVE.versionName) || "1.28.19-pre";
@@ -14701,7 +14701,7 @@ function lockScreen() {
 function lockInfoHtml(what) {
   const sync = window.RP_SYNC ? window.RP_SYNC.info() : null, r = (l, v, cls = "") => `<div class="kv"><span>${l}</span><span class="${cls}">${v}</span></div>`;
   if (what === "support") return `<div class="col" style="gap:4px"><p style="margin-bottom:12px">Call ${esc(BRAND.supportName)} and read them this device ID.</p>${r("Support", esc(`${BRAND.supportName} ${BRAND.supportPhone}`.trim()))}${r("Hours", esc(BRAND.supportHours))}${r("Device ID", `${esc(devFacts().deviceId)}`)}${r("App", `${esc(BRAND.productName)} ${esc(APP_VERSION)} · build ${APP_BUILD}`)}${r("Restaurant", esc(S.catalog.restaurant.name))}</div>`;
-  if (what === "about") return `<div class="col" style="gap:4px">${r("App", `${esc(BRAND.productName)} ${esc(APP_VERSION)}`)}${r("Build", String(APP_BUILD))}${r("Restaurant", esc(S.catalog.restaurant.name))}${r("Device ID", `${esc(devFacts().deviceId)}`)}${r("Support", "FLO, 7am to midnight")}
+  if (what === "about") return `<div class="col" style="gap:4px">${r("App", `${esc(BRAND.productName)} ${esc(APP_VERSION)}`)}${r("Build", String(APP_BUILD))}${r("Restaurant", esc(S.catalog.restaurant.name))}${r("Device ID", `${esc(devFacts().deviceId)}`)}${r("Support", `${esc(BRAND.supportName)}, ${esc(BRAND.supportHours)}`)}
     <div class="col" style="margin-top:12px">${updRowHtml()}</div>
     <p class="small muted" style="margin-top:12px">Icons: Material Symbols (Apache License 2.0). Typeface: Roboto (the Android system font).</p></div>`;
   return `<div class="col" style="gap:4px">${r("Network", S.sim.offline ? "Offline" : "Online", S.sim.offline ? "warn" : "ok")}${r("Store sync", sync ? esc(sync.status) : "This device only")}${r("Cloud", sync && sync.cloud.paired ? esc(sync.cloud.status) : "Not paired")}
@@ -16652,7 +16652,7 @@ function settingsBody() {
     ${card("Sync", hub + cloud)}
     ${(() => {   // 1.23.0: with test mode hidden there's no "Demo tools" section; the switch to turn it back on (manager-only) sits under About
       const tc = row("Test controls", "Card result and offline switch at the bottom, plus demo passcodes on the lock screen.", seg([[false, "Off"], [true, "On"]], demoOn(), "demoTools", "on"));
-      const about = row("About", `${esc(BRAND.productName)} ${APP_VERSION} · Support: FLO, 7am to midnight`, `<span class="muted small">Device ${esc(devFacts().deviceId)}</span>`);
+      const about = row("About", `${esc(BRAND.productName)} ${APP_VERSION} · Support: Runner Tech, 7am to midnight`, `<span class="muted small">Device ${esc(devFacts().deviceId)}</span>`);
       return demoOn() ? card("Demo tools", tc + about + updRowHtml()) : card("About", about + updRowHtml() + (can("DEVICE_SETUP") ? tc : ""));
     })()}</div>`;
   return setupFrame(cards, titles);
@@ -17444,7 +17444,7 @@ A("qeAdd", ({ cat, step, value, name }) => {
   snack(`${name} added to ${CAT[cat] ? CAT[cat].name : "the menu"}.`);
 });
 /* Arrange: d = -1/+1 (move one place) or to = the id of the button it was dropped on. the reference POS lets Quick Edit arrange items
-   and modifiers; Runner also arranges menu groups and menus (asked for by FLO). */
+   and modifiers; Runner also arranges menu groups and menus (asked for by Runner Tech). */
 function qeArrange(kind, id, d, to) {
   if (!qeCan("QE_ARRANGE")) { snack("Requires the Quick Edit: arrange permission.", true); return false; }
   if (kind === "item" && sharedLocked(qeObj(kind, id))) { snack("Arranging the shared menu is done in the back office.", true); return false; }   // 1.24: a chain's shared items
