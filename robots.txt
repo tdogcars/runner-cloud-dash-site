@@ -1,3 +1,163 @@
+# Runner POS public site.
+# Search crawlers and AI training crawlers may read the public pages.
+# Private app and back office paths stay disallowed.
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: Claude-User
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: Perplexity-User
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: Googlebot
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: GPTBot
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: CCBot
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /sign-in
+Disallow: /login
+Disallow: /invite/
+Disallow: /m/
+Disallow: /p/
+Disallow: /admin
+Disallow: /platform/
+Disallow: /setup-2fa
+Disallow: /v1/
+
 User-agent: *
 Allow: /$
 Allow: /pricing
@@ -10,3 +170,5 @@ Disallow: /admin
 Disallow: /platform/
 Disallow: /setup-2fa
 Disallow: /v1/
+
+Sitemap: https://runner-cloud-dash.onrender.com/sitemap.xml

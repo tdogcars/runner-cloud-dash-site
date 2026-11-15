@@ -1,0 +1,65 @@
+# Runner POS
+
+> Runner POS runs tables, bar tabs, handhelds, and kitchen screens, and keeps working offline. Runner Cloud handles menus, staff, and reports.
+
+Restaurant POS and back office, set up and supported by a local expert.
+
+Runner POS is the app your team uses on stations and handhelds to take orders, run tables and tabs, and close checks. Runner Cloud is your back office in the browser, where you build menus, manage employees and permissions, set taxes, and run reports.
+
+The Runner POS app runs on Android. Pricing is provided with your quote.
+
+## Public pages
+
+- [Home](https://runner-cloud-dash.onrender.com/): Runner — The POS built for the rush. Runner POS runs tables, bar tabs, handhelds, and kitchen screens, and keeps working offline. Runner Cloud handles menus, staff, and reports.
+- [Build your system](https://runner-cloud-dash.onrender.com/pricing): Choose stations, handhelds, printers, and kitchen display screens for your restaurant. Get a quote from a local Runner specialist.
+
+## Hardware in the system builder
+
+- **Stations.** Countertop touchscreen that runs Runner POS for orders, tables, tabs, and checkout.
+- **Handhelds.** Take orders tableside. Syncs with your store hub over the local network and keeps taking orders if the internet drops.
+- **Receipt printer (thermal).** Fast, quiet thermal printer for guest receipts and checks at the counter or bar.
+- **Kitchen printer (impact).** Impact printer for kitchen tickets. Holds up to heat and grease on the line.
+- **KDS Screens.** Kitchen display screens with Kitchen/Bar routing and bump. Go paperless on the line.
+- **Kiosks.** Self-service kiosks are on the way. Tell us how many you might want. Coming soon.
+
+## FAQ
+
+### What's the difference between Runner POS and Runner Cloud?
+
+Runner POS is the app your team uses on stations and handhelds to take orders, run tables and tabs, and close checks. Runner Cloud is your back office in the browser, where you build menus, manage employees and permissions, set taxes, and run reports.
+
+### Does Runner work if my internet goes down?
+
+Yes. Every station and handheld keeps taking orders and saves each change on the device. With a station set up as your store hub, your devices and kitchen screens keep talking over your restaurant's local network, so tickets still reach the kitchen. When the internet is back, everything syncs to Runner Cloud.
+
+### Is Runner for full service, quick service, or bars?
+
+All three. Use table service with your own floor plan, ring up quick service orders at the counter, and keep bar tabs open — in the same system.
+
+### What hardware do I need?
+
+Most restaurants start with at least one station and one receipt or kitchen printer. Add handhelds for tableside ordering and kitchen display screens for the line. Use the system builder to pick what fits and we'll put together a quote.
+
+### How much does it cost?
+
+Every restaurant is different, so pricing is provided with your quote. Build your system and a local specialist will send you pricing for your exact setup.
+
+### Who installs and trains my staff?
+
+A local Runner specialist installs your hardware, helps build your menu and floor plan, and trains your team on-site.
+
+### Can I manage more than one location?
+
+Yes. Runner Cloud supports multiple locations with a shared menu and store-level overrides for items, prices, or availability that differ by location.
+
+### Can managers make menu changes during service?
+
+Yes. With Quick Edit, managers can change prices, 86 items, and adjust the button layout right on the station. Bigger menu changes can be drafted in Runner Cloud and published when you're ready.
+
+### Can I set up automatic service fees?
+
+Yes. Configure an automatic service fee and Runner applies it to checks for you.
+
+### What reports can I see?
+
+Runner Cloud includes sales, product mix, sales by employee, sales by hour, and payments reports.
