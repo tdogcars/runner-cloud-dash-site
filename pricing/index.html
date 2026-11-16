@@ -9,7 +9,7 @@
       (function () {
         try {
           var p = localStorage.getItem('rc.theme');
-          var app = /^\/(m|p|admin|platform|sign-in|login|invite|setup-2fa)(\/|$)/.test(location.pathname);
+          var app = /^\/(m|p|admin|platform|sign-in|login|invite|setup-2fa|j|s)(\/|$)/.test(location.pathname);
           var dark = app && (p === 'dark' || (p !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
           var r = document.documentElement;
           if (app) r.classList.add('app-theme');
@@ -35,7 +35,7 @@
     <meta name="theme-color" content="#0b1530" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <script type="module" crossorigin src="/assets/index-CQoZjnRo.js"></script>
+    <script type="module" crossorigin src="/assets/index-xFsMlENA.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Cl_aOyFQ.css">
       <meta property="og:url" content="https://runner-cloud-dash.onrender.com/pricing" data-prerender-seo="" />
       <meta name="twitter:title" content="Build your Runner system" />
@@ -44,6 +44,7 @@
       <link rel="canonical" href="https://runner-cloud-dash.onrender.com/pricing" data-prerender-seo="" />
     <link rel="stylesheet" crossorigin href="/assets/marketing-yLb3kPFr.css" />
     <link rel="stylesheet" crossorigin href="/assets/legal-CYif0r3n.css" />
+    <link rel="stylesheet" crossorigin href="/assets/staff-BzyVYel2.css" />
     <script type="application/ld+json" data-mk="jsonld" data-prerender-seo="">{"@context":"https://schema.org","@type":"Organization","name":"Runner","url":"https://runner-cloud-dash.onrender.com/"}</script>
     <script type="application/ld+json" data-mk="jsonld" data-prerender-seo="">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Runner POS","applicationCategory":"BusinessApplication","operatingSystem":"Android","description":"Runner POS runs tables, bar tabs, handhelds, and kitchen screens, and keeps working offline. Runner Cloud handles menus, staff, and reports.","url":"https://runner-cloud-dash.onrender.com/"}</script>
   </head>
